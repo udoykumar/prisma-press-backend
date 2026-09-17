@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { catchAsync } from "../utilis/catchAsync";
+import { catchAsync } from "../../utilis/catchAsync";
 import { postService } from "./post.service";
-import { sendResponse } from "../utilis/sendResponse";
+import { sendResponse } from "../../utilis/sendResponse";
 import httpStatus from "http-status";
-import { prisma } from "../lib/prisma";
+import { prisma } from "../../lib/prisma";
 const createPost = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const id = req.user?.id;
@@ -21,7 +21,8 @@ const createPost = catchAsync(
 );
 const getAllPosts = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const posts = await postService.getAllPost();
+    const query = req.query;
+    const posts = await postService.getAllPost(query);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.CREATED,

@@ -1,6 +1,14 @@
-import { CommentStatus, PostStatus } from "../../generated/prisma/enums";
-import { prisma } from "../lib/prisma";
-import { CreatePostPayload, IUpdatePostPayload } from "./post.interface";
+import { equal } from "node:assert";
+import { CommentStatus, PostStatus } from "../../../generated/prisma/enums";
+import { prisma } from "../../lib/prisma";
+import {
+  CreatePostPayload,
+  IPostQuery,
+  IUpdatePostPayload,
+} from "./post.interface";
+
+import { title } from "node:process";
+import { PostWhereInput } from "../../../generated/prisma/models";
 
 const createPost = async (payload: CreatePostPayload, userId: string) => {
   const result = await prisma.post.create({
@@ -12,8 +20,184 @@ const createPost = async (payload: CreatePostPayload, userId: string) => {
   return result;
 };
 
-const getAllPost = async () => {
+const getAllPost = async (query: IPostQuery) => {
+  const limit = query.limit ? Number(query.limit) : 10;
+  const page = query.page ? Number(query.page) : 1;
+  const skip = (page - 1) * limit;
+
+  const sortBy = query.sortBy ? query.sortBy : "createdAt";
+  const sortOrder = query.sortOrder ? query.sortOrder : "desc";
+  const andConditions: PostWhereInput[] = [];
+
+  if (query.searchTerm) {
+    andConditions.push({
+      OR: [
+        {
+          title: {
+            contains: query.searchTerm,
+            mode: "insensitive",
+          },
+        },
+        {
+          content: {
+            contains: query.searchTerm,
+            mode: "insensitive",
+          },
+        },
+      ],
+    });
+  }
+
+  if (query.title) {
+    andConditions.push({
+      AND: [{ title: query.title }],
+    });
+  }
+  if (query.content) {
+    andConditions.push({
+      AND: [{ content: query.content }],
+    });
+  }
+  if (query.authorId) {
+    andConditions.push({
+      authorId: query.authorId,
+    });
+  }
+  if (query.isFeatured) {
+    andConditions.push({
+      isFeatured: query.isFeatured,
+    });
+  }
+  if (query.tags) {
+    andConditions.push({
+      tags: {
+        hasSome: JSON.parse(query.tags as string),
+      },
+    });
+  }
   const posts = await prisma.post.findMany({
+    //filtering / exact match without AND operator
+    // where: {
+    //   title: "Mysecend Post",
+    //   content: "ronaldo",
+    // },
+
+    //filtering / exact match with AND operator
+    // where: {
+    //   AND: [
+    //     {
+    //       title: "My first Post",
+    //     },
+    //     {
+    //       content: "Ronaldo",
+    //     },
+    //     {
+    //       tags: {
+    //         equals: ["typescript", "prisma", "express"],
+    //       },
+    //     },
+    //   ],
+    // },
+
+    // searching  / parrial match
+    // where: {
+    //   title: {
+    //     contains: "ronaldo",
+    //     mode: "insensitive",
+    //   },
+
+    // not idea for partial match
+
+    // content: {
+    //   contains: "Ronaldo",
+    // },
+    // },
+
+    //searching  / partial search or operator
+    // where: {
+    //   OR: [
+    //     { title: { contains: "Ronaldo", mode: "insensitive" } },
+    //     {
+    //       content: {
+    //         contains: "Ronaldo",
+    //         mode: "insensitive",
+    //       },
+    //     },
+    //   ],
+    // },
+
+    //combaining search and filrering
+    // where: {
+    //   // filtering
+
+    //   AND: [
+    //     {
+    //       // searching
+    //       OR: [
+    //         {
+    //           title: { contains: "Ron", mode: "insensitive" },
+    //         },
+    //         {
+    //           content: { contains: "ron", mode: "insensitive" },
+    //         },
+    //       ],
+    //     },
+    //     // filtering
+    //     { title: "Ronaldo" },
+    //     { content: "Ronaldo" },
+    //   ],
+    // },
+
+    // pagination
+
+    // take: 2,
+    // skip: 14,
+
+    // sorting
+    // orderBy: {
+    //   createdAt: "desc",
+    //   title: "asc",
+    //   content: "asc",
+    // },
+
+    // dynamic searching and filtering
+    // where: {
+    //   AND: [
+    //     query.searchTerm
+    //       ? {
+    //           OR: [
+    //             {
+    //               title: {
+    //                 contains: query.searchTerm,
+    //                 mode: "insensitive",
+    //               },
+    //             },
+    //             {
+    //               content: { contains: query.searchTerm, mode: "insensitive" },
+    //             },
+    //           ],
+    //         }
+    //       : {},
+
+    //     //title filtering
+    //     query.title
+    //       ? {
+    //           title: query.title,
+    //         }
+    //       : {},
+    //     query.content ? { content: query.content } : {},
+    //   ],
+    // },
+
+    where: {
+      AND: andConditions,
+    },
+    // dynamic pagination and sorting
+    take: limit,
+    skip: skip,
+    orderBy: {
+      [sortBy]: sortOrder,
+    },
     include: {
       author: {
         omit: { password: true },
@@ -40,7 +224,7 @@ const getPostById = async (postId: string) => {
   //     },
   //   },
   // });
-  console.log(postId);
+
   const transactionResult = await prisma.$transaction(async (tx) => {
     await tx.post.update({
       where: { id: postId },
