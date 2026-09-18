@@ -22,12 +22,13 @@ const createPost = catchAsync(
 const getAllPosts = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
-    const posts = await postService.getAllPost(query);
+    const result = await postService.getAllPost(query);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.CREATED,
       message: "Post created successfully",
-      data: posts,
+      data: result.data,
+      meta: result.meta,
     });
   },
 );

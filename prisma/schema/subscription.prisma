@@ -9,8 +9,9 @@ model Subscription {
     // stripe related id
 
     // stripe customer id 
-    stripeCustomerId String @unique
+    stripeCustomerId     String @unique
     // stripe subscription id 
+    stripeSubscriptionId String @unique
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
